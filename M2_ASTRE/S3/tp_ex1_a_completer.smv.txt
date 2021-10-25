@@ -1,0 +1,25 @@
+MODULE main
+VAR state : {E0, E1, E2, E3, E4, E5, E6, E7, E8};
+	p : boolean;
+	q : boolean;
+ASSIGN
+  init(state) := E0;
+  init(p) := ...........;
+  init(q) := ...........;
+  next(state) := case
+		state = E0 : {E2};
+		state = E1 : {E2, E4};
+		...
+		...
+		...
+		...
+		...
+		...
+		...
+ 		 esac;
+  next(p) := (next(state) = E1) | (next(state) = E3) | ....................................... ;
+  next(q) := ..................................................................................; 
+ 		
+SPEC AG ((state = E10) -> (p = TRUE & q = TRUE)); /// A CHANGER !!
+SPEC AG (EF q); /// A CHANGER !!
+
