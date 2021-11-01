@@ -1,0 +1,113 @@
+BENCHABANE Mohand - 3416447
+UNG Richard - 3680881
+
+
+	Exercice 1:
+	
+Question 1)
+
+Générer des fichiers de Mo différents avec ./generator.sh
+
+Question 2)
+
+On uploade ces fichiers sur la racine du HDFS avec : hdfs dfs -copyFromLocal <fichier> /
+
+Question 3)
+
+WordCount.java : On a - un map (WordCountMapper) [une key, une value, un context]
+			  - un reduce (WordCountReducer) [une key, une value, un context]
+			  - un main
+
+Question 4)
+
+ On peut voir à la fin de la réponse de la commande yarn (section Job Counters) que 2 containers sont lancés
+La comparaison des sorties standards , avec la commande `ps uxf` correspond bien : on a deux processus en plus avec le même parent (le nodeManager)
+
+Question 5)
+
+Il faut aller voir le dossier de sortie rentré dans la commande yarn : le point .
+Comme on a juste mis un point, HDFS a créé un dossier user qu'il faut explorer pour trouver le résultat : /user/mohand/part-r-00000  [hdsf dfs -cat /user/mohand/part-r-00000]
+Si l'on veut le mettre à la racine il faut mettre comme dossier de sortie par exemple /out au lieu de .
+
+Le format des noms des fichiers de sortie est :
+	
+	- _SUCCESS
+	- part-r-00000
+	 
+Question 6)
+
+Pour loremIpsum-170:
+	
+	Nombre de tâche map lancée: 2
+	Nombre de tâche reduce lancée: 1
+
+Question 7)
+	
+Pour loremIpsum-20:
+	
+	Nombre de tâche map lancée: 1
+	Nombre de tâche reduce lancée: 1
+	
+On remarque que l'on a lancé une tâche map en moins que pour loremIpsum-170.
+	
+Question 8)
+
+Pour loremIpsum-150+20:
+
+	Nombre de tâche map lancée: 3
+	Nombre de tâche reduce lancée: 1
+	Nombre de container lancé: 3
+
+On remarque que l'on a lancé une tâche map de plus que loremIpsum-170, soit 3 tâches map.
+On imagine que l'on a lancé une map pour loremIpsum-20 et 2 pour loremIpsum-150.
+On en déduit que ce n'est pas adapté aux multitudes de petits fichiers.
+
+Pour loremIpsum-150:
+
+	Nombre de tâche map lancée: 2
+	Nombre de tâche reduce lancée: 1
+	
+Après vérification, on remarque que quand on somme le nombre de tâche map lancée par 20 et 150 on trouve autant de map lancée que 150+20.
+
+On en déduit que cela est logique car lorsque l'on lance l'opération map-reduce sur le fichier HDFS, les fichiers loremIpsum 150 et 20 sont séparément pour la map d'où le 2+1=3. Ensuite le shuffle va aiguiller,trier et fusionner afin d'obtenir juste une tâche reduce.
+
+
+Question 9)
+
+Le nombre de map correspond au nombre de split.
+
+Le nombre de split correspond à la partie entière de la taille totale des données d'entrées divisé par 128Mo (divisé par la taille d'un bloc) si le reste de la division est inférieur à 1/10ème de 128Mo sinon il faudra ajouter un split supplémentaire.
+
+Question 10)
+
+Pour loremIpsum-140:
+
+	Nombre de tâche map lancée: 1
+	Nombre de tâche reduce lancée: 1
+	
+Le fichier loremIpsum fait 140Mo.
+Soit 140/128 = 1.09375.
+Comme on peut le voir, le reste de la division est inférieur à 1/10 de 128Mo donc une tâche map est suffisant.
+
+Le résultat est donc bien cohérent avec ce que l'on a déduit à la question précédente.
+
+Question 11) Code source de la méthode getSplits [FileInputFormat.java]
+
+Question 12)
+
+L'optimisation détectée à la question 10 permet d'optimiser le traitement des fichiers de petits tailles. Si le nombre de fichier correspondait juste à la division de la taille des données par la taille d'un bloc, il aurait fallu lancé 2 tâches map pour loremIpsum-140.
+
+"SPLIT_SLOP = 1.1 " donne une marge de 10%, le dernier split peut donc traiter jusqu'à 128 + 10%, soit 128 + 12,8 = 140,8Mo.
+
+Question 13)
+ 
+ Après modification du fichier WordCount.java:
+ 
+ Pour loremIpsum-150:
+	
+	Nombre de tâche map tuée : 1
+	Nombre de tâche map lancée: 3
+	Nombre de tâche reduce lancée: 1
+	
+On remarque que l'on a lancé une tâche map en plus par rapport au cas sans exécution spéculative.
+En effet, lorsque l'on lance l'exécution spéculative, l'AppMaster peut décider de lancer de nouvelles instances de tâches en cours d'exécution afin d'anticiper les tâches jugées trop lentes. Ces nouvelles instances vont traiter les mêmes tâches que celle en cours d'exécution, et celles qui se terminent en premières vont copier leurs données sur l'HDFS tandis que celle qui vont se terminer après vont être tuées.
