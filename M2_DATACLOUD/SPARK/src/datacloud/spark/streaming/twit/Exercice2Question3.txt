@@ -1,0 +1,1 @@
+Pour que le nouveau classement prenne totalement la place sur l'ancien il faut attendre "y" seconde(s) après le changement de classement.
