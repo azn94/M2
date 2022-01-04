@@ -11,7 +11,71 @@ import org.apache.zookeeper.ZooDefs;
 import datacloud.zookeeper.ZkClient;
 import datacloud.zookeeper.util.ConfConst;
 
+public class BoundedBarrier {
 
+	private static ZkClient client;
+	private String path;
+	private int N;
+	
+	public BoundedBarrier(ZkClient client, String path, int N) throws KeeperException, InterruptedException {
+		// TODO Auto-generated constructor stub
+		BoundedBarrier.client = client;
+		this.path = path;
+		
+		if(client.zk().exists(path, true) == null) {
+            client.zk().create(path, BigInteger.valueOf(N).toByteArray(),ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+            this.N = N;
+        }else {
+        	this.N = new BigInteger(client.zk().getData(path, false, null)).intValue();
+        }
+	}
+
+	public void sync() {
+		// TODO Auto-generated method stub
+		String path_child;
+		try {
+			synchronized(client) {
+				path_child = client.zk().create(path + "/", ConfConst.EMPTY_CONTENT,ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
+				if(client.zk().getChildren(path, false).size() < N) {
+					try {
+						client.wait();
+					}catch (InterruptedException e1) { // pour cr2
+						client.zk().delete(path_child, -1);
+						if (client.zk().getChildren(path, false).size() == 0) {
+							client.zk().delete(path, -1);
+						}
+						return; 
+					}
+				}else {
+					client.notifyAll();
+				}
+				client.zk().delete(path_child, -1);
+				if(client.zk().getChildren(path, false).size() == 0) {
+					client.zk().delete(path, -1);
+				}
+			}
+			
+		} catch (KeeperException | InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	public int sizeBarrier() {
+		// TODO Auto-generated method stub
+		return N;
+	}
+
+}
+
+/*
+
+Tentative sans static ZkClient non abouti
+
+*/
+
+
+/*
 public class BoundedBarrier implements Watcher{
 
 	private ZkClient client;
@@ -41,9 +105,9 @@ public class BoundedBarrier implements Watcher{
 			String path_child = client.zk().create(path + "/" + client.id(), ConfConst.EMPTY_CONTENT, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
 		
 			while (true) {
-                synchronized (mutex) {
+                synchronized (this) {
                     if (client.zk().getChildren(path, true).size() < N) {
-                        mutex.wait();
+                        this.wait();
                     }
                     break;
                     
@@ -53,7 +117,7 @@ public class BoundedBarrier implements Watcher{
 				client.zk().delete(path_child, 0);
 			
 			while(true) {
-				synchronized(mutex) {
+				synchronized(this) {
 					if (client.zk().getChildren(path, true).size() > 0) {
                         return;
                     } else {
@@ -70,7 +134,7 @@ public class BoundedBarrier implements Watcher{
 			try {
 				client.zk().delete(path + "/" + client.id(), 0);
 				while(true) {
-					synchronized(mutex) {
+					synchronized(this) {
 						if (client.zk().getChildren(path, true).size() > 0) {
 	                        return;
 	                    } else {
@@ -97,10 +161,10 @@ public class BoundedBarrier implements Watcher{
 	@Override
 	public void process(WatchedEvent e) {
 		// TODO Auto-generated method stub
-		synchronized(mutex) {
+		synchronized(this) {
 			System.out.println("on event: " + e.getPath() + " - " + e.getType() + " - " + e.getState());
-			mutex.notify();
+			this.notify();
 		}
 			
 	}
-}
+}*/
