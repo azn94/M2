@@ -1,0 +1,199 @@
+Exercice 1 – Réparation automobile
+
+Question 1:
+
+cqlsh> CREATE KEYSPACE garage WITH replication = {'class': 'SimpleStrategy', 'replication_factor':1};
+cqlsh> use garage;
+
+Question 2:
+
+	cqlsh:garage> CREATE TABLE Vehicule( 
+		  idvehicule int PRIMARY KEY, 
+		  marque text, 
+		  modele text, 
+		  kilometrage int);
+
+cqlsh:garage> CREATE TABLE Mecanicien(
+          idMecano int PRIMARY KEY,
+          nom text,
+          prenom text,
+          status text);
+
+Question 3:
+
+Drop Table Vehicule;
+
+cqlsh:garage> CREATE TABLE Vehicule( 
+	  idvehicule int PRIMARY KEY, 
+	  marque text, 
+	  modele text, 
+	  kilometrage int,
+	  mecano int);
+
+INSERT INTO Mecanicien (idmecano, nom, prenom, status) VALUES (1,'Dupont','Jean','CDI');
+INSERT INTO Mecanicien (idmecano, nom, prenom, status) VALUES (2,'Durant','Paul','CDD');
+INSERT INTO Mecanicien (idmecano, nom, prenom, status) VALUES (3,'Turpin','Guy','CDI');
+INSERT INTO Mecanicien (idmecano, nom, prenom, status) VALUES (4,'Clarenne','Jordan','stagiaire');
+INSERT INTO Mecanicien (idmecano, nom, prenom, status) VALUES (5,'Magnier','Martin','interim');
+INSERT INTO Mecanicien (idmecano, nom, prenom, status) VALUES (6,'Maugan','Pascal','CDI');
+INSERT INTO Mecanicien (idmecano, nom, prenom, status) VALUES (7,'Darius','Gerald','CDD');
+INSERT INTO Mecanicien (idmecano, nom, prenom, status) VALUES (8,'Avezard','Thomas','CDI');
+
+INSERT INTO Vehicule (idvehicule, marque, modele, kilometrage, mecano) VALUES (1,'Renault','clio',58600,3);
+INSERT INTO Vehicule (idvehicule, marque, modele, kilometrage, mecano) VALUES (2,'Peugeot','206',46871,2);
+INSERT INTO Vehicule (idvehicule, marque, modele, kilometrage, mecano) VALUES (3,'Peugeot','607',78954,1);
+INSERT INTO Vehicule (idvehicule, marque, modele, kilometrage, mecano) VALUES (4,'Citroen','Xsara',125680,2);
+INSERT INTO Vehicule (idvehicule, marque, modele, kilometrage, mecano) VALUES (5,'Renault','Megane',10265,6);
+INSERT INTO Vehicule (idvehicule, marque, modele, kilometrage, mecano) VALUES (6,'Peugeot','107',68420,7);
+INSERT INTO Vehicule (idvehicule, marque, modele, kilometrage, mecano) VALUES (7,'Citroen','C3',89845,5);
+
+Question 4:
+
+cqlsh:garage> select * from vehicule;
+
+ idvehicule | kilometrage | marque  | mecano | modele
+------------+-------------+---------+--------+--------
+          5 |       10265 | Renault |      6 | Megane
+          1 |       58600 | Renault |      3 |   clio
+          2 |       46871 | Peugeot |      2 |    206
+          4 |      125680 | Citroen |      2 |  Xsara
+          7 |       89845 | Citroen |      5 |     C3
+          6 |       68420 | Peugeot |      7 |    107
+          3 |       78954 | Peugeot |      1 |    607
+
+(7 rows)
+
+Question 5:
+
+cqlsh:garage> SELECT marque from vehicule ;
+
+ marque
+---------
+ Renault
+ Renault
+ Peugeot
+ Citroen
+ Citroen
+ Peugeot
+ Peugeot
+
+(7 rows)
+
+Question 6:
+
+cqlsh:garage> select nom from mecanicien where idmecano = 3 ;
+
+ nom
+--------
+ Turpin
+
+(1 rows)
+
+Question 7:
+
+cqlsh:garage> Select marque, modele
+          From vehicule
+          WHERE mecano=2;
+          
+InvalidRequest: Error from server: code=2200 [Invalid query] message="Cannot execute this query as it might involve data filtering and thus may have unpredictable performance. If you want to execute this query despite the performance unpredictability, use ALLOW FILTERING"
+
+Cassandra sait qu'il pourrait ne pas être en mesure d'exécuter la requête de manière efficace. Il nous avertit qu'exécuter cette requête en tant que telle n'est peut-être pas une bonne idée car elle peut utiliser beaucoup de nos ressources informatiques en impliquant un filtrage des données et donc avoir des performances imprévisibles.
+
+cqlsh:garage> Select marque, modele From vehicule WHERE mecano=2  allow filtering;
+
+ marque  | modele
+---------+--------
+ Peugeot |    206
+ Citroen |  Xsara
+
+(2 rows)
+
+Question 8:
+
+cqlsh:garage> CREATE INDEX ON vehicule (mecano) ;
+
+cqlsh:garage> Select marque, modele From vehicule WHERE mecano=2;
+
+ marque  | modele
+---------+--------
+ Peugeot |    206
+ Citroen |  Xsara
+
+(2 rows)
+
+
+On remarque qu'il n'y a plus de message d'erreur.
+
+Un index permet d'accéder aux données dans Cassandra en utilisant des attributs autres que la clé de partition. L'avantage est une recherche rapide et efficace des données correspondant à une condition donnée. Cassandra utilise donc l'index sur la colonne mecano pour trouver les lignes correspondantes et n'a pas besoin d'effectuer de filtrage.
+
+Question 9:
+
+cqlsh:garage> select * from vehicule where idvehicule < 5 allow filtering;
+
+ idvehicule | kilometrage | marque  | mecano | modele
+------------+-------------+---------+--------+--------
+          1 |       58600 | Renault |      3 |   clio
+          2 |       46871 | Peugeot |      2 |    206
+          4 |      125680 | Citroen |      2 |  Xsara
+          3 |       78954 | Peugeot |      1 |    607
+
+(4 rows)
+
+
+cqlsh:garage> select * from vehicule where token(idvehicule) < token(5);
+
+ idvehicule | kilometrage | marque | mecano | modele
+------------+-------------+--------+--------+--------
+
+(0 rows)
+
+
+Un token est la valeur hachée de la clé primaire. Il est donc normal que l'on a pas le même résultat que la version avec allow filtering car la comparaison sur les tokens dépends de la manière dont on hache la clé primaire.
+
+cqlsh:garage> select idvehicule,token(idvehicule) from vehicule;
+
+ idvehicule | system.token(idvehicule)
+------------+--------------------------
+          5 |     -7509452495886106294
+          1 |     -4069959284402364209
+          2 |     -3248873570005575792
+          4 |     -2729420104000364805
+          7 |      1634052884888577606
+          6 |      2705480034054113608
+          3 |      9010454139840013625
+
+(7 rows)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
