@@ -1,0 +1,19 @@
+network.size 75
+simulation.endtime 5000000
+random.seed 3
+
+init.i Initialisation1
+
+
+protocol.transport UniformRandomTransport
+protocol.transport.mindelay 5
+protocol.transport.maxdelay 500
+protocol.applicative.transport transport
+
+protocol.leader_protocol Leader_Protocol
+protocol.leader_protocol.transport transport
+
+control.endcontroler EndControler1
+control.endcontroler.leader_protocol leader_protocol
+control.endcontroler.at -1
+control.endcontroler.FINAL

@@ -1,0 +1,27 @@
+network.size 10
+simulation.endtime 5000000
+random.seed 5
+
+init.i Initialisation2
+
+protocol.multipaxos_protocol MultiPaxos_Protocol
+protocol.multipaxos_protocol.transport deadlytransport
+
+#protocol.applicative.MultiPaxos_Protocol
+
+
+protocol.transport UniformRandomTransport
+protocol.transport.mindelay 5
+protocol.transport.maxdelay 500
+
+
+protocol.deadlytransport DeadlyTransport
+protocol.deadlytransport.drop 0.1
+protocol.deadlytransport.faultynodes 1  # 1 pour activer les fautes / 0 sinon
+protocol.deadlytransport.transport transport
+
+
+control.endcontroler EndControler2
+control.endcontroler.multipaxos_protocol multipaxos_protocol
+control.endcontroler.at -1
+control.endcontroler.FINAL
